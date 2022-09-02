@@ -5,13 +5,13 @@ rCore-Tutorial version 3.x
 
 ### Binaries
 
-* rustc: 1.57.0-nightly (e1e9319d9 2021-10-14)
+* rustc: 1.64.0-nightly (9a7b7d5e5 2022-07-19)
 
-* cargo-binutils: 0.3.3
+* cargo-binutils: 0.3.6
 
-* qemu: 5.0.0
+* qemu: 7.0.0
 
-* rustsbi-lib: 0.2.0-alpha.4
+* rustsbi-lib: 0.2.2
 
   rustsbi-qemu: d4968dd2
 
