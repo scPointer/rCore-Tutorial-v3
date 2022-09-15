@@ -87,7 +87,7 @@ fn user_sig_test_restore() {
 
 fn kernel_sig_test_ignore() {
     sigprocmask(SignalFlags::SIGSTOP.bits() as u32);
-    if kill(getpid() as usize, SignalFlags::SIGSTOP.bits()) < 0 {
+    if kill(getpid() as usize, SIGSTOP) < 0 {
         println!("kill faild\n");
         exit(-1);
     }
@@ -96,12 +96,12 @@ fn kernel_sig_test_ignore() {
 fn kernel_sig_test_stop_cont() {
     let pid = fork();
     if pid == 0 {
-        kill(getpid() as usize, SignalFlags::SIGSTOP.bits());
+        kill(getpid() as usize, SIGSTOP);
         sleep(1000);
         exit(-1);
     } else {
         sleep(5000);
-        kill(pid as usize, SignalFlags::SIGCONT.bits());
+        kill(pid as usize, SIGCONT);
         let mut exit_code = 0;
         wait(&mut exit_code);
     }
@@ -148,12 +148,12 @@ fn final_sig_test() {
         }
     } else {
         sleep(1000);
-        if kill(pid as usize, 1 << 14) < 0 {
+        if kill(pid as usize, 14) < 0 {
             println!("Kill failed!");
             exit(-1);
         }
         sleep(1000);
-        kill(pid as usize, SignalFlags::SIGKILL.bits());
+        kill(pid as usize, SIGKILL);
     }
 }
 

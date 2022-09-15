@@ -8,18 +8,12 @@ use alloc::boxed::Box;
 use crate::trap::TrapContext;
 
 
-mod signal_impl;
 mod signal_action;
-//mod signal_flags;
 mod signal_result;
 mod signal_no;
 
-mod signal_set;
-mod default_action;
-
-type SignalImpl = signal_impl::SignalImpl;
+type SignalImpl = super::signal_impl::SignalImpl;
 pub use signal_action::SignalAction;
-//pub use signal_flags::{SignalFlags, MAX_SIG};
 pub use signal_result::SignalResult;
 pub use signal_no::{SignalNo, MAX_SIG};
 
@@ -55,12 +49,4 @@ pub trait Signal: Send + Sync {
 
     /// 从信号处理函数中退出，返回值表示是否成功。`sys_sigreturn` 会使用
     fn sig_return(&mut self, current_context: &mut TrapContext) -> bool;
-}
-
-/// 新建一个信号模块，所有信号处理函数需为默认
-/// 
-/// 注意，所有信号的“默认处理函数”并不是相同的，参考
-/// `https://venam.nixers.net/blog/unix/2016/10/21/unix-signals.html`
-pub fn new_signal_module() -> Box<dyn Signal> {
-    Box::new(SignalImpl::new())
 }

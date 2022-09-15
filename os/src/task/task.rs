@@ -1,5 +1,6 @@
 use super::{pid_alloc, KernelStack, PidHandle, TaskContext};
-use crate::signal::{Signal, new_signal_module};
+use crate::signal::Signal;
+use crate::signal_impl::SignalImpl;
 use crate::config::TRAP_CONTEXT;
 use crate::fs::{File, Stdin, Stdout};
 use crate::mm::{translated_refmut, MemorySet, PhysPageNum, VirtAddr, KERNEL_SPACE};
@@ -106,7 +107,7 @@ impl TaskControlBlock {
                         // 2 -> stderr
                         Some(Arc::new(Stdout)),
                     ],
-                    signal: new_signal_module(),
+                    signal: Box::new(SignalImpl::new()),
                     trap_ctx_backup: None,
                 })
             },

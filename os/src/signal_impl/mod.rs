@@ -1,12 +1,13 @@
 //! 一种信号模块的实现
 
 use alloc::boxed::Box;
-use super::Signal;
-use super::{SignalResult, SignalAction, SignalNo, MAX_SIG};
+use super::signal::{Signal, SignalResult, SignalAction, SignalNo, MAX_SIG};
 use crate::trap::TrapContext;
 
-use super::signal_set::SignalSet;
-use super::default_action::DefaultAction;
+mod default_action;
+use default_action::DefaultAction;
+mod signal_set;
+use signal_set::SignalSet;
 
 /// 正在处理的信号
 pub enum HandlingSignal {
