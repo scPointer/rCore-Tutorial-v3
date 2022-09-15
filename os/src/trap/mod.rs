@@ -3,9 +3,10 @@ mod context;
 use crate::config::{TRAMPOLINE, TRAP_CONTEXT};
 use crate::syscall::syscall;
 use crate::task::{
-    check_signals_error_of_current, current_add_signal, current_trap_cx, current_user_token,
-    exit_current_and_run_next, handle_signals, suspend_current_and_run_next, SignalFlags,
+    current_add_signal, current_trap_cx, current_user_token,
+    handle_signals, suspend_current_and_run_next,
 };
+use crate::signal::SignalNo;
 use crate::timer::set_next_trigger;
 use core::arch::{asm, global_asm};
 use riscv::register::{
@@ -68,10 +69,10 @@ pub fn trap_handler() -> ! {
                 current_trap_cx().sepc,
             );
             */
-            current_add_signal(SignalFlags::SIGSEGV);
+            current_add_signal(SignalNo::SIGSEGV);
         }
         Trap::Exception(Exception::IllegalInstruction) => {
-            current_add_signal(SignalFlags::SIGILL);
+            current_add_signal(SignalNo::SIGILL);
         }
         Trap::Interrupt(Interrupt::SupervisorTimer) => {
             set_next_trigger();
@@ -90,10 +91,12 @@ pub fn trap_handler() -> ! {
     handle_signals();
 
     // check error signals (if error then exit)
+    /*
     if let Some((errno, msg)) = check_signals_error_of_current() {
         println!("[kernel] {}", msg);
         exit_current_and_run_next(errno);
     }
+    */
     trap_return();
 }
 

@@ -2,8 +2,9 @@ use crate::fs::{open_file, OpenFlags};
 use crate::mm::{translated_ref, translated_refmut, translated_str};
 use crate::task::{
     add_task, current_task, current_user_token, exit_current_and_run_next, pid2task,
-    suspend_current_and_run_next, SignalAction, SignalFlags, MAX_SIG,
+    suspend_current_and_run_next,
 };
+use crate::signal::{SignalAction, SignalNo, MAX_SIG};
 use crate::timer::get_time_ms;
 use alloc::string::String;
 use alloc::sync::Arc;
@@ -106,13 +107,11 @@ pub fn sys_waitpid(pid: isize, exit_code_ptr: *mut i32) -> isize {
 
 pub fn sys_kill(pid: usize, signum: i32) -> isize {
     if let Some(task) = pid2task(pid) {
-        if let Some(flag) = SignalFlags::from_bits(1 << signum) {
+        let signal_no = SignalNo::from(signum as usize);
+        if signal_no != SignalNo::ERR {
             // insert the signal if legal
             let mut task_ref = task.inner_exclusive_access();
-            if task_ref.signals.contains(flag) {
-                return -1;
-            }
-            task_ref.signals.insert(flag);
+            task_ref.signal.add_signal(signal_no);
             0
         } else {
             -1
@@ -125,13 +124,7 @@ pub fn sys_kill(pid: usize, signum: i32) -> isize {
 pub fn sys_sigprocmask(mask: u32) -> isize {
     if let Some(task) = current_task() {
         let mut inner = task.inner_exclusive_access();
-        let old_mask = inner.signal_mask;
-        if let Some(flag) = SignalFlags::from_bits(mask) {
-            inner.signal_mask = flag;
-            old_mask.bits() as isize
-        } else {
-            -1
-        }
+        inner.signal.update_mask(mask as usize) as isize
     } else {
         -1
     }
@@ -140,25 +133,12 @@ pub fn sys_sigprocmask(mask: u32) -> isize {
 pub fn sys_sigretrun() -> isize {
     if let Some(task) = current_task() {
         let mut inner = task.inner_exclusive_access();
-        inner.handling_sig = -1;
         // restore the trap context
         let trap_ctx = inner.get_trap_cx();
-        *trap_ctx = inner.trap_ctx_backup.unwrap();
+        inner.signal.sig_return(trap_ctx);
         0
     } else {
         -1
-    }
-}
-
-fn check_sigaction_error(signal: SignalFlags, action: usize, old_action: usize) -> bool {
-    if action == 0
-        || old_action == 0
-        || signal == SignalFlags::SIGKILL
-        || signal == SignalFlags::SIGSTOP
-    {
-        true
-    } else {
-        false
     }
 }
 
@@ -173,19 +153,23 @@ pub fn sys_sigaction(
         if signum as usize > MAX_SIG {
             return -1;
         }
-        if let Some(flag) = SignalFlags::from_bits(1 << signum) {
-            if check_sigaction_error(flag, action as usize, old_action as usize) {
-                return -1;
+        let signal_no = SignalNo::from(signum as usize);
+        if signal_no != SignalNo::ERR {
+            // 如果需要返回原来的处理函数，则从信号模块中获取
+            if old_action as usize != 0 {
+                if let Some(signal_action) = inner.signal.get_action_ref(signal_no) {
+                    *translated_refmut(token, old_action) = signal_action;
+                } else { // 如果返回了 None，说明 signal_no 无效
+                    return -1;
+                }
             }
-            let old_kernel_action = inner.signal_actions.table[signum as usize];
-            if old_kernel_action.mask != SignalFlags::from_bits(40).unwrap() {
-                *translated_refmut(token, old_action) = old_kernel_action;
-            } else {
-                let mut ref_old_action = *translated_refmut(token, old_action);
-                ref_old_action.handler = old_kernel_action.handler;
+            // 如果需要设置新的处理函数，则设置到信号模块中
+            if action as usize != 0 {
+                // 如果返回了 false，说明 signal_no 无效
+                if !inner.signal.set_action(signal_no, &*translated_ref(token, action)) {
+                    return -1;
+                }
             }
-            let ref_action = translated_ref(token, action);
-            inner.signal_actions.table[signum as usize] = *ref_action;
             return 0;
         }
     }

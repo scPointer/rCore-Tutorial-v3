@@ -1,5 +1,5 @@
-use super::{pid_alloc, KernelStack, PidHandle, SignalFlags};
-use super::{SignalActions, TaskContext};
+use super::{pid_alloc, KernelStack, PidHandle, TaskContext};
+use crate::signal::{Signal, new_signal_module};
 use crate::config::TRAP_CONTEXT;
 use crate::fs::{File, Stdin, Stdout};
 use crate::mm::{translated_refmut, MemorySet, PhysPageNum, VirtAddr, KERNEL_SPACE};
@@ -9,6 +9,7 @@ use alloc::string::String;
 use alloc::sync::{Arc, Weak};
 use alloc::vec;
 use alloc::vec::Vec;
+use alloc::boxed::Box;
 use core::cell::RefMut;
 
 pub struct TaskControlBlock {
@@ -29,6 +30,9 @@ pub struct TaskControlBlockInner {
     pub children: Vec<Arc<TaskControlBlock>>,
     pub exit_code: i32,
     pub fd_table: Vec<Option<Arc<dyn File + Send + Sync>>>,
+    pub signal: Box<dyn Signal>,
+    pub trap_ctx_backup: Option<TrapContext>,
+    /*
     pub signals: SignalFlags,
     pub signal_mask: SignalFlags,
     // the signal which is being handling
@@ -40,6 +44,7 @@ pub struct TaskControlBlockInner {
     // if the task is frozen by a signal
     pub frozen: bool,
     pub trap_ctx_backup: Option<TrapContext>,
+    */
 }
 
 impl TaskControlBlockInner {
@@ -101,12 +106,7 @@ impl TaskControlBlock {
                         // 2 -> stderr
                         Some(Arc::new(Stdout)),
                     ],
-                    signals: SignalFlags::empty(),
-                    signal_mask: SignalFlags::empty(),
-                    handling_sig: -1,
-                    signal_actions: SignalActions::default(),
-                    killed: false,
-                    frozen: false,
+                    signal: new_signal_module(),
                     trap_ctx_backup: None,
                 })
             },
@@ -209,13 +209,7 @@ impl TaskControlBlock {
                     children: Vec::new(),
                     exit_code: 0,
                     fd_table: new_fd_table,
-                    signals: SignalFlags::empty(),
-                    // inherit the signal_mask and signal_action
-                    signal_mask: parent_inner.signal_mask,
-                    handling_sig: -1,
-                    signal_actions: parent_inner.signal_actions.clone(),
-                    killed: false,
-                    frozen: false,
+                    signal: parent_inner.signal.from_fork(),
                     trap_ctx_backup: None,
                 })
             },

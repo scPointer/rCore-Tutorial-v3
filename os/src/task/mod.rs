@@ -1,14 +1,13 @@
-mod action;
 mod context;
 mod manager;
 mod pid;
 mod processor;
-mod signal;
 mod switch;
 #[allow(clippy::module_inception)]
 mod task;
 
 use crate::fs::{open_file, OpenFlags};
+use crate::signal::{SignalNo, SignalResult};
 use alloc::sync::Arc;
 pub use context::TaskContext;
 use lazy_static::*;
@@ -17,13 +16,11 @@ use manager::remove_from_pid2task;
 use switch::__switch;
 use task::{TaskControlBlock, TaskStatus};
 
-pub use action::{SignalAction, SignalActions};
 pub use manager::{add_task, pid2task};
 pub use pid::{pid_alloc, KernelStack, PidHandle};
 pub use processor::{
     current_task, current_trap_cx, current_user_token, run_tasks, schedule, take_current_task,
 };
-pub use signal::{SignalFlags, MAX_SIG};
 
 pub fn suspend_current_and_run_next() {
     // There must be an application running.
@@ -117,6 +114,17 @@ pub fn add_initproc() {
     add_task(INITPROC.clone());
 }
 
+pub fn current_add_signal(signal_no: SignalNo) {
+    let task = current_task().unwrap();
+    let mut task_inner = task.inner_exclusive_access();
+    task_inner.signal.add_signal(signal_no);
+    // println!(
+    //     "[K] current_add_signal:: current task sigflag {:?}",
+    //     task_inner.signals
+    // );
+}
+
+/*
 pub fn check_signals_error_of_current() -> Option<(i32, &'static str)> {
     let task = current_task().unwrap();
     let task_inner = task.inner_exclusive_access();
@@ -125,16 +133,6 @@ pub fn check_signals_error_of_current() -> Option<(i32, &'static str)> {
     //     task_inner.signals
     // );
     task_inner.signals.check_error()
-}
-
-pub fn current_add_signal(signal: SignalFlags) {
-    let task = current_task().unwrap();
-    let mut task_inner = task.inner_exclusive_access();
-    task_inner.signals |= signal;
-    // println!(
-    //     "[K] current_add_signal:: current task sigflag {:?}",
-    //     task_inner.signals
-    // );
 }
 
 fn call_kernel_signal_handler(signal: SignalFlags) {
@@ -252,3 +250,36 @@ pub fn handle_signals() {
         suspend_current_and_run_next()
     }
 }
+*/
+
+pub fn handle_signals() {
+    loop {
+        let task = current_task().unwrap();
+        let mut task_inner = task.inner_exclusive_access();
+        let trap_cx = task_inner.get_trap_cx();
+        
+        match task_inner.signal.handle_signals(trap_cx) {
+            // 进程应该被冻结暂停
+            SignalResult::ProcessSuspended => {
+                drop(task_inner);
+                drop(task);
+                suspend_current_and_run_next();
+            },
+            // 进程应该结束执行
+            SignalResult::ProcessKilled(exit_code) => {
+                drop(task_inner);
+                drop(task);
+                exit_current_and_run_next(exit_code);
+                unreachable!();
+            },
+            // 其他情况下，要么是没有信号需要处理；
+            // 要么是处理了一个忽略的信号，
+            // 要么是已处理了一个信号并跳转到对应的信号处理函数；
+            // 总之直接退出循环即可
+            _ => {
+                break;
+            }
+        }
+    }
+}
+
