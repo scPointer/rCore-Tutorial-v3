@@ -4,15 +4,17 @@
 //! 
 //! 
 
+#![no_std]
+
+extern crate alloc;
 use alloc::boxed::Box;
-use crate::trap::TrapContext;
+use trap_context::TrapContext;
 
 
 mod signal_action;
 mod signal_result;
 mod signal_no;
 
-type SignalImpl = super::signal_impl::SignalImpl;
 pub use signal_action::SignalAction;
 pub use signal_result::SignalResult;
 pub use signal_no::{SignalNo, MAX_SIG};

@@ -22,7 +22,7 @@ mod process;
 use fs::*;
 use process::*;
 
-use crate::signal::SignalAction;
+use signal::SignalAction;
 
 pub fn syscall(syscall_id: usize, args: [usize; 3]) -> isize {
     match syscall_id {

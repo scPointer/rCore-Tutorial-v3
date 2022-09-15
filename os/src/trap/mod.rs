@@ -1,12 +1,10 @@
-mod context;
-
 use crate::config::{TRAMPOLINE, TRAP_CONTEXT};
 use crate::syscall::syscall;
 use crate::task::{
     current_add_signal, current_trap_cx, current_user_token,
     handle_signals, suspend_current_and_run_next,
 };
-use crate::signal::SignalNo;
+use signal::SignalNo;
 use crate::timer::set_next_trigger;
 use core::arch::{asm, global_asm};
 use riscv::register::{
@@ -129,4 +127,4 @@ pub fn trap_from_kernel() -> ! {
     panic!("a trap {:?} from kernel!", scause::read().cause());
 }
 
-pub use context::TrapContext;
+pub use trap_context::TrapContext;

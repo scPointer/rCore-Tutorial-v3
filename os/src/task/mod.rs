@@ -7,7 +7,7 @@ mod switch;
 mod task;
 
 use crate::fs::{open_file, OpenFlags};
-use crate::signal::{SignalNo, SignalResult};
+use signal::{SignalNo, SignalResult};
 use alloc::sync::Arc;
 pub use context::TaskContext;
 use lazy_static::*;

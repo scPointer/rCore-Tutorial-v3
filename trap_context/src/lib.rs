@@ -1,3 +1,7 @@
+//! 陷入中断 / 异常时保存的用户程序上下文信息。
+
+#![no_std]
+
 use riscv::register::sstatus::{self, Sstatus, SPP};
 
 #[repr(C)]

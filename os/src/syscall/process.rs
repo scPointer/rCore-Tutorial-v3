@@ -4,7 +4,7 @@ use crate::task::{
     add_task, current_task, current_user_token, exit_current_and_run_next, pid2task,
     suspend_current_and_run_next,
 };
-use crate::signal::{SignalAction, SignalNo, MAX_SIG};
+use signal::{SignalAction, SignalNo, MAX_SIG};
 use crate::timer::get_time_ms;
 use alloc::string::String;
 use alloc::sync::Arc;

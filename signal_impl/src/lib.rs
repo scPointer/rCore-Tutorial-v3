@@ -1,8 +1,11 @@
 //! 一种信号模块的实现
 
+#![no_std]
+
+extern crate alloc;
 use alloc::boxed::Box;
-use super::signal::{Signal, SignalResult, SignalAction, SignalNo, MAX_SIG};
-use crate::trap::TrapContext;
+use signal::{Signal, SignalResult, SignalAction, SignalNo, MAX_SIG};
+use trap_context::TrapContext;
 
 mod default_action;
 use default_action::DefaultAction;
